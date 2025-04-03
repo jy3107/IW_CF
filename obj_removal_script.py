@@ -2,21 +2,21 @@ import torch
 from diffusers import DDIMScheduler, DiffusionPipeline
 from diffusers.utils import load_image
 import torch.nn.functional as F
-from torchvision.transforms.functional import to_tensor, gaussian_blur
+from torchvision.transforms.functional import to_tensor, resize, gaussian_blur
 import os
 from PIL import Image
 
 # Define paths directly within the script
-INPUT_DIR = "/home/jy3107/IW/test"
-MASK_DIR = "/home/jy3107/IW/mask_images"
-OUTPUT_DIR = "/home/jy3107/IW/outputs"
+INPUT_DIR = "/scratch/network/jy3107/IW/test"
+MASK_DIR = "/scratch/network/jy3107/IW/mask_images"
+OUTPUT_DIR = "/scratch/network/jy3107/IW/outputs"
 
 # Set device and data type
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 dtype = torch.float16 if torch.cuda.is_available() else torch.float32  
 
 # Custom pipeline path (ensure the file exists)
-CUSTOM_PIPELINE_PATH = "/home/jy3107/IW/AttentiveEraser-master/pipelines/pipeline_stable_diffusion_xl_attentive_eraser.py"
+CUSTOM_PIPELINE_PATH = "/scratch/network/jy3107/IW/AttentiveEraser-master/pipelines/pipeline_stable_diffusion_xl_attentive_eraser.py"
 
 # Load the pipeline
 scheduler = DDIMScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", clip_sample=False, set_alpha_to_one=False)
@@ -26,21 +26,27 @@ pipeline = DiffusionPipeline.from_pretrained(
     scheduler=scheduler,
     variant="fp16",
     use_safetensors=True,
-    torch_dtype=torch.float32,
-).to(device)
+    torch_dtype=torch.float16,  
+).to(device="cuda")  
+
+# pipeline = torch.compile(pipeline)
 
 
 def preprocess_image(image_path, device):
-    image = to_tensor(load_image(image_path)).unsqueeze_(0).float()
+    print("Preprocessing image")
+    image = load_image(image_path)
+    image = image.resize((1024, 1024), Image.LANCZOS)  # Resize using PIL
+    image = to_tensor(image).unsqueeze_(0).float()
     if image.shape[1] != 3:
         image = image.expand(-1, 3, -1, -1)
-    image = F.interpolate(image, (2048, 2048))
     return image.to(dtype).to(device)
 
 
 def preprocess_mask(mask_path, device):
-    mask = to_tensor(load_image(mask_path, convert_method=lambda img: img.convert('L'))).unsqueeze_(0).float()
-    mask = F.interpolate(mask, (2048, 2048))
+    print("Preprocessing mask")
+    mask = load_image(mask_path, convert_method=lambda img: img.convert('L'))
+    mask = mask.resize((1024, 1024), Image.LANCZOS)  # Resize using PIL
+    mask = to_tensor(mask).unsqueeze_(0).float()
     mask = gaussian_blur(mask, kernel_size=(77, 77))
     mask[mask < 0.1] = 0
     mask[mask >= 0.1] = 1
@@ -52,6 +58,7 @@ def remove_obj(input_image_path, mask_dir, output_dir):
     """
     Processes a single image and removes objects using the Attentive Eraser pipeline.
     """
+    print("Removing object")
     name = os.path.splitext(os.path.basename(input_image_path))[0]
     output_path = os.path.join(output_dir, name)
     os.makedirs(output_path, exist_ok=True)
@@ -76,10 +83,10 @@ def remove_obj(input_image_path, mask_dir, output_dir):
 
         image = pipeline(
             prompt=prompt,
-            image=source_image.to(dtype),
-            mask_image=mask.to(dtype),
-            height=2048,
-            width=2048,
+            image=source_image,
+            mask_image=mask,
+            height=1024,
+            width=1024,
             AAS=True,
             strength=0.8,
             rm_guidance_scale=9,

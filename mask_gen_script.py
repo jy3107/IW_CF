@@ -2,7 +2,7 @@ import sys
 import os
 
 # Add repository utils directory to system path
-sys.path.append('/home/jy3107/IW/text-guided-mask-for-inpainting')
+sys.path.append('/scratch/network/jy3107/IW/text-guided-mask-for-inpainting')
 
 import torch
 import numpy as np
@@ -13,10 +13,10 @@ from PIL import Image
 import supervision as sv
 
 import nltk
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-nltk.download('punkt_tab')
+# nltk.download('punkt')
+# nltk.download('wordnet')
+# nltk.download('omw-1.4')
+# nltk.download('punkt_tab')
 # # Ensure NLTK resources are available
 # nltk.download('punkt')
 # nltk.download('wordnet')
@@ -84,7 +84,7 @@ def mask_gen(image, sample_obj, name):
     boxes = [box['bbox'] for box in sample_obj]
     objs = [obj['label'] for obj in sample_obj]
 
-    output_dir = f"/home/jy3107/IW/mask_images/{name}"
+    output_dir = f"/scratch/network/jy3107/IW/mask_images/{name}"
     os.makedirs(output_dir, exist_ok=True)
 
     for i in range(obj_length):
@@ -114,5 +114,5 @@ def process_images(input_dir):
             print(f"Error processing {filename}: {e}")
 
 if __name__ == "__main__":
-    input_dir = sys.argv[1] if len(sys.argv) > 1 else "/home/jy3107/IW/test"
+    input_dir = sys.argv[1] if len(sys.argv) > 1 else "/scratch/network/jy3107/IW/test"
     process_images(input_dir)
