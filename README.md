@@ -6,3 +6,6 @@ removed visual attributes
 workflows with Attentive-Eraser to generate attribute-controlled counterfactuals 
 
 • Measured semantic drift using BLIP and ViT caption models; found 40%+ change in keywords in disability removals
+<p align="center">
+  <img  width="605" height="517" alt="Screenshot 2025-08-18 at 9 56 53 PM" src="https://github.com/user-attachments/assets/425a3943-db81-48fd-b2c8-aa2313ba1ae4" />
+</p>
